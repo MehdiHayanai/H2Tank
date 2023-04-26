@@ -1,0 +1,23 @@
+# Ignore compiled Python files
+*.pyc
+__pycache__/
+
+# Ignore the virtual environment directory
+BE/
+
+# Ignore logs and other output files
+logs/
+output/
+
+# Ignore any generated files
+generated/
+
+# Ignore any IDE or editor configuration files
+.idea/
+.vscode/
+*.iml
+
+# Ignore any temporary or backup files
+*~
+*.bak
+*.swp
