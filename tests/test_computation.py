@@ -32,4 +32,3 @@ print("Time spent =", t1 - t2)
 
 print(np.zeros(10))
 print(compulatation.Cgm[0][0][5])
-# compulatation.Cgm
