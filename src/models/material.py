@@ -3,7 +3,14 @@
 
 
 class Material:
-    def __init__(self, young_modulus, shear_modulus, poisson_ratio):
+    def __init__(
+        self,
+        young_modulus: tuple,
+        shear_modulus: tuple,
+        poisson_ratios: tuple,
+        name: str = "Unnamed",
+    ):
         self.young_modulus = young_modulus  # MPa
         self.shear_modulus = shear_modulus  # MPa
-        self.poisson_ratio = poisson_ratio
+        self.poisson_ratios = poisson_ratios
+        self.name = name

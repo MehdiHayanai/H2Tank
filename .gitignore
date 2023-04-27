@@ -11,6 +11,7 @@ output/
 
 # Ignore any generated files
 generated/
+gens/
 
 # Ignore any IDE or editor configuration files
 .idea/
