@@ -17,6 +17,8 @@ class Genome:
         self.layers_by_materials = layers_by_materials
         self.ref_angles = ref_angles
         self.ref_thickness = ref_thickness
+        self.reverse = reverse
+        self.mixed = mixed
 
     def make_layers(self, number_of_layers, mat):
         """
@@ -56,10 +58,10 @@ class Genome:
 
 
 class Individual:
-    def __init__(self, genome: Genome, inte):
+    def __init__(self, genome: Genome):
         self.genome = genome  # list of float values
 
-        self.tank = Tank(genome.get_genome(), internal_radius=174, length=1000)
+        self.tank: Tank = Tank(genome.get_genome(), internal_radius=174, length=1000)
         self.fitness = 0.0  # fitness value of the individual
         # ...
 

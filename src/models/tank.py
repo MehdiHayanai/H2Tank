@@ -33,7 +33,6 @@ class Tank:
     def make_tank_excel(self, path: str = None):
         data = [layer.get_layer_caracteristics() for layer in self.layers]
 
-        print(data)
         data_frame = pd.DataFrame(data, columns=self.layers[0].columns)
         data_frame = data_frame[["angle", "thickness", "material_name", "layer_name"]]
         unique_filename = "Tank_data" + str(uuid.uuid4()) + ".xlsx"
