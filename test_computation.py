@@ -1,6 +1,9 @@
+from src.models.computation import Computation
 from src.population.individual import Genome, Individual
 from src.models.material import Material
 from src.models.tank import Tank
+from time import time
+import numpy as np
 
 
 ref_angles = [88.7, 17.5, 28.0, 43.5, 72.0, 12.8, 18.4, 35.0, 77.0, 12.1]
@@ -18,4 +21,15 @@ individual = Individual(genome)
 tank: Tank = individual.tank
 
 print(tank.layers[:2])
-tank.make_tank_excel("gens/")
+compulatation = Computation(tank, 5)
+
+t2 = time()
+for _ in range(100):
+    compulatation.calculate_matrices()
+t1 = time()
+
+print("Time spent =", t1 - t2)
+
+print(np.zeros(10))
+print(compulatation.Cgm[0][0][5])
+# compulatation.Cgm
