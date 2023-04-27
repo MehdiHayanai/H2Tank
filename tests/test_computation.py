@@ -25,10 +25,10 @@ compulatation = Computation(tank, 5)
 
 t2 = time()
 for _ in range(100):
-    compulatation.calculate_matrices()
+    # compulatation.calculate_matrices()
+    compulatation.calculate_coefficients()
 t1 = time()
 
 print("Time spent =", t1 - t2)
 
 print(np.zeros(10))
-print(compulatation.Cgm[0][0][5])
