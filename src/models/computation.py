@@ -271,9 +271,9 @@ class Computation:
     def calculate_constantes(self):
         self.__calculate_coefficients()
         P = self.tank.burst_test_pressure
-        VCL = np.zeros(2 * self.number_of_layers + 1)
+        VCL = np.zeros(2 * self.number_of_layers + 2)
         VCL[0] = -P
-        VCL[2 * self.number_of_layers] = self.r_cl[0] ** 2 * P / 2
+        VCL[2 * self.number_of_layers + 1] = self.r_cl[0] ** 2 * P / 2
 
         # create the matrice
         # [d, e ,a]
@@ -281,7 +281,30 @@ class Computation:
         MatSYS = np.concatenate((self.d, self.e, self.a), axis=1)
         MatSYS_1 = np.linalg.inv(MatSYS)
 
-        Vconst = np.zeros(2 * self.number_of_layers + 2)
+        Vconst = np.zeros(2 * self.number_of_layers + 1)
 
-        for i in range(2 * self.number_of_layers + 2):
+        for i in range(2 * self.number_of_layers + 1):
             Vconst[i] = np.dot(MatSYS_1[i], VCL)
+
+        computation_radius = np.zeros(
+            self.number_of_layers * self.number_of_points_by_layer
+        )
+
+        for i in range(self.number_of_layers):
+            current_layer: Layer = self.tank.layers[i]
+            radius_step = current_layer.thickness / (self.number_of_points_by_layer - 1)
+
+            computation_radius[
+                i
+                * self.number_of_points_by_layer : (i + 1)
+                * self.number_of_points_by_layer
+            ] = (self.r_cl[i] + np.arange(self.number_of_points_by_layer) * radius_step)
+
+        # also known as the thickness of the composite layer
+        normalized_radius_denominator = self.r_cl[-1] - self.r_cl[0]
+
+        normalized_radius = (
+            computation_radius - self.r_cl[0]
+        ) / normalized_radius_denominator
+
+        return normalized_radius
