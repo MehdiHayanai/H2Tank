@@ -1,5 +1,7 @@
 from src.models.tank import Tank, Layer
 import numpy as np
+import pandas as pd
+import uuid
 
 
 class Computation:
@@ -25,6 +27,8 @@ class Computation:
         self.Tsig_1: list[np.ndarray] = []
         self.Teps_1: list[np.ndarray] = []
         self.Cgm: list[np.ndarray] = []
+
+        self.Sigg: np.array = np.array([])  # used as a flag in save_data_to_excel
 
     def calculate_cost(self):
         # calculate cost function based on material resistance model
@@ -290,6 +294,7 @@ class Computation:
             Vconst[i] = np.dot(MatSYS_1[i], VCL)
 
         self.VCL = VCL
+        self.Vconst = Vconst
 
         return Vconst
 
@@ -338,5 +343,109 @@ class Computation:
             Uz[start_index:end_index] = (
                 -Vconst[2 * self.number_of_layers] * self.normalized_length / 2
             )
+        self.computation_radius = computation_radius
+        self.normalized_radius = normalized_radius
+        self.Ur = Ur
+        self.Uq = Uq
+        self.Uz = Uz
 
-        return Ur
+    def calculate_deformation_and_constraints(self):
+        self.calculate_displacement()
+
+        self.Epsg: np.ndarray = np.zeros(
+            (6, self.number_of_layers * self.number_of_points_by_layer)
+        )
+        self.Sigg: np.array = np.zeros(
+            (self.number_of_layers * self.number_of_points_by_layer, 6)
+        )
+        self.Epso: np.array = np.zeros(
+            (self.number_of_layers * self.number_of_points_by_layer, 6)
+        )
+        self.Sigo: np.array = np.zeros(
+            (self.number_of_layers * self.number_of_points_by_layer, 6)
+        )
+
+        for i in range(self.number_of_layers):
+            start, end = (
+                i * self.number_of_points_by_layer,
+                (i + 1) * self.number_of_points_by_layer,
+            )
+            self.Epsg[0, start:end] = self.Vconst[2 * self.number_of_layers]
+            self.Epsg[1, start:end] = (
+                self.Vconst[i]
+                * np.power(self.computation_radius[start:end], (self.b[i] - 1))
+                + self.Vconst[self.number_of_layers + i]
+                * np.power(self.computation_radius[start:end], (-self.b[i] - 1))
+                + self.a1[i] * self.Vconst[2 * self.number_of_layers]
+                + self.a2[i]
+                * self.Vconst[2 * self.number_of_layers + 1]
+                * self.computation_radius[start:end]
+            )
+
+            self.Epsg[2, start:end] = (
+                self.b[i]
+                * self.Vconst[i]
+                * np.power(self.computation_radius[start:end], (self.b[i] - 1))
+                - self.b[i]
+                * self.Vconst[self.number_of_layers + i]
+                * np.power(self.computation_radius[start:end], (-self.b[i] - 1))
+                + self.a1[i] * self.Vconst[2 * self.number_of_layers]
+                + 2
+                * self.a2[i]
+                * self.Vconst[2 * self.number_of_layers + 1]
+                * self.computation_radius[start:end]
+            )
+
+            self.Epsg[5, start:end] = (
+                self.Vconst[2 * self.number_of_layers + 1]
+                * self.computation_radius[start:end]
+            )
+
+            self.Sigg[start:end, :] = (self.Cgm[i] @ self.Epsg[:, start:end]).T
+            self.Epso[start:end, :] = (self.Teps[i] @ self.Epsg[:, start:end]).T
+            self.Sigo[start:end, :] = (self.Tsig[i] @ self.Sigg[start:end, :].T).T
+
+    def save_data_to_excel(self, path: str = "computation_out/"):
+        if len(self.Sigg) != 0:
+            self.calculate_deformation_and_constraints()
+
+        data = pd.DataFrame()
+        data["r"] = self.computation_radius
+        data["R"] = self.normalized_radius
+        data["Ur"] = self.Ur
+        data["Uq"] = self.Uq
+        data["Uz"] = self.Uz
+
+        data["eps1"] = self.Epsg.T[:, 0]
+        data["eps2"] = self.Epsg.T[:, 1]
+        data["eps3"] = self.Epsg.T[:, 2]
+        data["eps4"] = self.Epsg.T[:, 3]
+        data["eps5"] = self.Epsg.T[:, 4]
+        data["eps6"] = self.Epsg.T[:, 5]
+
+        data["epsx"] = self.Epso[:, 0]
+        data["epsy"] = self.Epso[:, 1]
+        data["epsz"] = self.Epso[:, 2]
+        data["epsyz"] = self.Epso[:, 3]
+        data["epsxz"] = self.Epso[:, 4]
+        data["epsxy"] = self.Epso[:, 5]
+
+        data["sig1"] = self.Sigg[:, 0]
+        data["sig2"] = self.Sigg[:, 1]
+        data["sig3"] = self.Sigg[:, 2]
+        data["sig4"] = self.Sigg[:, 3]
+        data["sig5"] = self.Sigg[:, 4]
+        data["sig6"] = self.Sigg[:, 5]
+
+        data["sigx"] = self.Sigo[:, 0]
+        data["sigy"] = self.Sigo[:, 1]
+        data["sigz"] = self.Sigo[:, 2]
+        data["sigyz"] = self.Sigo[:, 3]
+        data["sigxz"] = self.Sigo[:, 4]
+        data["sigxy"] = self.Sigo[:, 5]
+
+        unique_filename = "computation_data" + str(uuid.uuid4()) + ".xlsx"
+        if path != None:
+            unique_filename = path + unique_filename
+        data.to_excel(unique_filename)
+        print("Saved data in", unique_filename)

@@ -22,8 +22,11 @@ gens/
 # Ignore test 
 tests/
 comp/
+computation_out/
 
 # Ignore any temporary or backup files
 *~
 *.bak
 *.swp
+
+*.ipynb
