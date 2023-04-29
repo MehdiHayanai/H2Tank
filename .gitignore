@@ -18,6 +18,11 @@ gens/
 .vscode/
 *.iml
 
+
+# Ignore test 
+tests/
+comp/
+
 # Ignore any temporary or backup files
 *~
 *.bak
