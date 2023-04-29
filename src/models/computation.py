@@ -5,6 +5,7 @@ import numpy as np
 class Computation:
     def __init__(self, tank: Tank, number_of_points_by_layer: int):
         self.tank = tank
+        self.normalized_length = 1
         self.number_of_points_by_layer = number_of_points_by_layer
         self.number_of_layers = len(self.tank.layers)
         self.r_cl: np.array = np.zeros(self.number_of_layers + 1)
@@ -159,9 +160,11 @@ class Computation:
                 Cgm[self.number_of_layers - 1][1, 2]
                 + 2 * Cgm[self.number_of_layers - 1][2, 2]
             )
-        ) * self.r_cl[
-            self.number_of_layers - 1
-        ]  # Second last boundary condition for a
+        ) * self.r_cl[self.number_of_layers]
+        """
+            You probably need to check self.number_of_layers - 1 
+        """
+        # Second last boundary condition for a
 
         a[2 * self.number_of_layers, 0] = 0  # Boundary condition for a, bottom row
         a[2 * self.number_of_layers, 1] = 0  # Boundary condition for a, bottom row
@@ -172,12 +175,12 @@ class Computation:
         # Loop over each layer, except the first (already set in previous block)
         for i in range(1, self.number_of_layers):
             # Set diagonal elements of d and e matrices
-            d[i, i] = -self.r_cl[i - 1] ** self.b[i]
-            e[i, i] = -self.r_cl[i - 1] ** (-self.b[i])
+            d[i, i] = -self.r_cl[i] ** (self.b[i])
+            e[i, i] = -self.r_cl[i] ** (-self.b[i])
 
             # Set elements of a matrix for the i-th row
-            a[i, 0] = (self.a1[i - 1] - self.a1[i]) * self.r_cl[i - 1]
-            a[i, 1] = (self.a2[i - 1] - self.a2[i]) * self.r_cl[i - 1] ** 2
+            a[i, 0] = (self.a1[i - 1] - self.a1[i]) * self.r_cl[i]
+            a[i, 1] = (self.a2[i - 1] - self.a2[i]) * (self.r_cl[i] ** 2)
 
             # Set elements of a matrix for the i-th row of the second half
             a[i + self.number_of_layers - 1, 0] = (
@@ -189,25 +192,25 @@ class Computation:
                 (Cgm[i - 1][2, 5] - Cgm[i][2, 5])
                 + self.a2[i - 1] * (Cgm[i - 1][1, 2] + 2 * Cgm[i - 1][2, 2])
                 - self.a2[i] * (Cgm[i][1, 2] + 2 * Cgm[i][2, 2])
-            ) * self.r_cl[i - 1]
+            ) * self.r_cl[i]
 
             # Set off-diagonal elements of d and e matrices
-            d[i, i - 1] = self.r_cl[i - 1] ** self.b[i - 1]
-            e[i, i - 1] = self.r_cl[i - 1] ** (-self.b[i - 1])
+            d[i, i - 1] = self.r_cl[i] ** self.b[i - 1]
+            e[i, i - 1] = self.r_cl[i] ** (-self.b[i - 1])
 
             # Set elements of d and e matrices for the i-th row of the second half
             d[i + self.number_of_layers - 1, i] = -(
                 Cgm[i][1, 2] + self.b[i] * Cgm[i][2, 2]
-            ) * self.r_cl[i - 1] ** (self.b[i] - 1)
+            ) * self.r_cl[i] ** (self.b[i] - 1)
             e[i + self.number_of_layers - 1, i] = -(
                 Cgm[i][1, 2] - self.b[i] * Cgm[i][2, 2]
-            ) * self.r_cl[i - 1] ** (-self.b[i] - 1)
+            ) * self.r_cl[i] ** (-self.b[i] - 1)
 
         for i in range(self.number_of_layers):
-            d[i + self.number_of_layers - 1][i] = (
+            d[i + self.number_of_layers][i] = (
                 Cgm[i][1][2] + self.b[i] * Cgm[i][2][2]
             ) * self.r_cl[i + 1] ** (self.b[i] - 1)
-            e[i + self.number_of_layers - 1][i] = (
+            e[i + self.number_of_layers][i] = (
                 Cgm[i][1][2] - self.b[i] * Cgm[i][2][2]
             ) * self.r_cl[i + 1] ** (-self.b[i] - 1)
             d[2 * self.number_of_layers][i] = (
@@ -273,7 +276,7 @@ class Computation:
         P = self.tank.burst_test_pressure
         VCL = np.zeros(2 * self.number_of_layers + 2)
         VCL[0] = -P
-        VCL[2 * self.number_of_layers + 1] = self.r_cl[0] ** 2 * P / 2
+        VCL[2 * self.number_of_layers] = self.r_cl[0] ** 2 * P / 2
 
         # create the matrice
         # [d, e ,a]
@@ -281,14 +284,25 @@ class Computation:
         MatSYS = np.concatenate((self.d, self.e, self.a), axis=1)
         MatSYS_1 = np.linalg.inv(MatSYS)
 
-        Vconst = np.zeros(2 * self.number_of_layers + 1)
+        Vconst = np.zeros(2 * self.number_of_layers + 2)
 
-        for i in range(2 * self.number_of_layers + 1):
+        for i in range(2 * self.number_of_layers + 2):
             Vconst[i] = np.dot(MatSYS_1[i], VCL)
+
+        self.VCL = VCL
+
+        return Vconst
+
+    def calculate_displacement(self):
+        Vconst = self.calculate_constantes()
 
         computation_radius = np.zeros(
             self.number_of_layers * self.number_of_points_by_layer
         )
+
+        Ur = np.zeros(self.number_of_layers * self.number_of_points_by_layer)
+        Uq = np.zeros(self.number_of_layers * self.number_of_points_by_layer)
+        Uz = np.zeros(self.number_of_layers * self.number_of_points_by_layer)
 
         for i in range(self.number_of_layers):
             current_layer: Layer = self.tank.layers[i]
@@ -307,4 +321,22 @@ class Computation:
             computation_radius - self.r_cl[0]
         ) / normalized_radius_denominator
 
-        return normalized_radius
+        for i in range(self.number_of_layers):
+            start_index = i * self.number_of_points_by_layer
+            end_index = (i + 1) * self.number_of_points_by_layer
+            r = computation_radius[start_index:end_index]
+            Ur[start_index:end_index] = (
+                Vconst[i] * (r ** self.b[i])
+                + Vconst[self.number_of_layers + i] * (r ** (-self.b[i]))
+                + self.a1[i] * Vconst[2 * self.number_of_layers] * r
+                + self.a2[i] * Vconst[2 * self.number_of_layers + 1] * (r**2)
+            )
+            #  a1(i) * Vconst(2 * NBC + 1) * r(k) + a2(i) * Vconst(2 * NBC + 2) * r(k) ^ 2
+            Uq[start_index:end_index] = (
+                Vconst[2 * self.number_of_layers + 1] * r * self.normalized_length / 2
+            )
+            Uz[start_index:end_index] = (
+                -Vconst[2 * self.number_of_layers] * self.normalized_length / 2
+            )
+
+        return Ur

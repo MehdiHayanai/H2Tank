@@ -27,8 +27,13 @@ population_size = 100
 t2 = time()
 for _ in range(population_size):
     # compulatation.calculate_matrices()
-    compulatation.calculate_constantes()
+    ur = compulatation.calculate_displacement()
 t1 = time()
 
 print("Time spent =", t1 - t2)
 print(f"For {population_size} individuals")
+
+
+tank.make_tank_excel("gens/")
+
+print(ur)
