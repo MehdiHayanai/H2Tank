@@ -6,7 +6,7 @@ import uuid
 
 class Computation:
     def __init__(self, tank: Tank, number_of_points_by_layer: int):
-        self.tank = tank
+        self.tank: Tank = tank
         self.normalized_length = 1
         self.number_of_points_by_layer = number_of_points_by_layer
         self.number_of_layers = len(self.tank.layers)
@@ -47,6 +47,7 @@ class Computation:
             v23, v13, v12 = layer.material.poisson_ratios
 
             # Calculate the 6x6 stiffness matrix
+            # can be improved if the same material is used
             stiffness_matrix = np.zeros((6, 6))
             stiffness_matrix[0][0] = 1 / E1
             stiffness_matrix[0][1] = -v23 / E1
@@ -69,6 +70,7 @@ class Computation:
             self.Com.append(compliance_matrix)
 
             # Calculate the 6x6 stress and strain rotation matrices
+            # can be improved if the same angle is already calculated
             angle = layer.angle
             c = np.cos(np.radians(angle))
             s = np.sin(np.radians(angle))
@@ -404,6 +406,64 @@ class Computation:
             self.Sigg[start:end, :] = (self.Cgm[i] @ self.Epsg[:, start:end]).T
             self.Epso[start:end, :] = (self.Teps[i] @ self.Epsg[:, start:end]).T
             self.Sigo[start:end, :] = (self.Tsig[i] @ self.Sigg[start:end, :].T).T
+
+    def __calculate_F(self, Xt, Xc, Yt, Yc, X12):
+        """
+        Calculates the Tsai-Wu coefficients F11, F22, F12, F23, F13, and F33.
+
+        Parameters:
+        -----------
+        Xt: float
+            Tensile strength in the fiber direction
+        Xc: float
+            Compressive strength in the fiber direction
+        Yt: float
+            Tensile strength in the transverse direction
+        Yc: float
+            Compressive strength in the transverse direction
+        S: float
+            Shear strength
+
+        Returns:
+        --------
+        F1, F2, F11, F22, F66, F12: np.array
+            Tsai-Wu coefficients array
+        """
+
+        F1 = 1 / Xt - 1 / Xc
+        F2 = 1 / Yt - 1 / Yc
+
+        F11 = 1 / (Xt * Xc)
+        F22 = 1 / (Yt * Yc)
+        F66 = 1 / (X12**2)
+        F12 = -np.sqrt(F11 * F22)
+
+        return np.array([F1, F2, F11, F22, F66, F12])
+
+    def tsai_wu_failure_criteria(self):
+        # Calculate the Tsai-Wu coefficients
+        tsai_wu: np.array = np.zeros(
+            (self.number_of_layers * self.number_of_points_by_layer)
+        )
+        F_material = dict()
+        layers: list[Layer] = self.tank.layers
+
+        for i, layer in enumerate(layers):
+            material_name = layer.name
+
+            if material_name not in F_material.keys():
+                Xt, Xc, Yt, Yc, X12 = layer.material.get_constants()
+                F_material[material_name] = self.__calculate_F(Xt, Xc, Yt, Yc, X12)
+
+            for j in range(self.number_of_points_by_layer):
+                index = i * self.number_of_points_by_layer + j
+
+                s1, s2, s12 = self.Sigo[index][[0, 1, -1]]
+                S = np.array([s1, s2, s1**2, s2**2, s12**2, s1 * s2])
+                F = F_material[material_name]
+                tsai_wu[index] = np.dot(S, F)
+
+        return tsai_wu
 
     def save_data_to_excel(self, path: str = "computation_out/"):
         if len(self.Sigg) != 0:

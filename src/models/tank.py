@@ -39,9 +39,9 @@ class Tank:
         """
         return sum(layer.thickness for layer in self.layers)
 
-    def get_external_diameter(self):
+    def get_external_radius(self):
         """
-        Returns the external diameter of the tank.
+        Returns the external radius of the tank.
         """
         return self.internal_radius + self.get_total_thickness()
 

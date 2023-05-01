@@ -1,5 +1,6 @@
 from src.models.tank import Tank, Layer
 from src.models.material import Material
+from src.models.computation import Computation
 import numpy as np
 
 
@@ -57,14 +58,55 @@ class Genome:
         return layers
 
 
-class Individual:
-    def __init__(self, genome: Genome):
+class Individual(Computation):
+    def __init__(
+        self,
+        genome: Genome,
+        number_of_points_by_layer: int,
+        failure_tol: float,
+        internal_radius=174,
+        length=1000,
+    ):
         self.genome = genome  # list of float values
+        self.internal_radius = internal_radius
+        self.length = length
+        self.number_of_points_by_layer = number_of_points_by_layer
+        self.tank: Tank = Tank(genome.get_genome(), internal_radius, length)
+        self.failure_tol = failure_tol
 
-        self.tank: Tank = Tank(genome.get_genome(), internal_radius=174, length=1000)
+        super().__init__(self.tank, self.number_of_points_by_layer)
         self.fitness = 0.0  # fitness value of the individual
-        # ...
 
-    def calculate_fitness(self):
-        # Calculate fitness value of the individual
-        self.fitness = ...
+    def calculate_fitness(self, coefs: tuple, marge: float):
+        self.calculate_deformation_and_constraints()
+        tsai_wu = self.tsai_wu_failure_criteria()
+
+        n1, n2, n3 = coefs
+
+        def calculate_ponderation(f):
+            if f <= 1:
+                return n1
+            elif 1 < f <= 1 + marge:
+                return n2
+            else:
+                return n3
+
+        self.inverse_radius_ratio = (
+            self.tank.internal_radius / self.tank.get_external_radius()
+        )
+
+        failure_ratio_f = lambda x: -x / (1 - self.failure_tol) + 1 / (
+            1 - self.failure_tol
+        )
+
+        self.failed = tsai_wu[tsai_wu > 1].shape[0] / tsai_wu.shape[0]
+
+        self.nomber_ratio = failure_ratio_f(self.failed)
+
+        fintess = (
+            self.inverse_radius_ratio**4
+            * self.nomber_ratio
+            * (np.vectorize(failure_ratio_f)(tsai_wu)).sum()
+        )
+
+        self.fitness = fintess
