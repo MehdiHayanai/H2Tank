@@ -1,9 +1,14 @@
-class Crossover:
-    def __init__(self, probability):
-        self.probability = probability
+# from src.population.individual import Individual
 
-    def execute(self, parent1, parent2):
-        # Perform crossover operation on parent individuals
-        child1 = ...
-        child2 = ...
-        return child1, child2
+
+# class Crossover:
+#     def __init__(self, probability):
+#         self.probability = probability
+
+#     def execute(self, parent1: Individual, parent2: Individual):
+#         # Perform crossover operation on parent individuals
+#         parent1_layers =
+#         parent1_layers =
+#         child1 = ...
+#         child2 = ...
+#         return child1, child2

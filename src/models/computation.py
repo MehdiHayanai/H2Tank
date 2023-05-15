@@ -30,11 +30,6 @@ class Computation:
 
         self.Sigg: np.array = np.array([])  # used as a flag in save_data_to_excel
 
-    def calculate_cost(self):
-        # calculate cost function based on material resistance model
-        cost = ...
-        return cost
-
     def __calculate_matrices(self):
         # Get the list of layers from the tank object
         layers: list[Layer] = self.tank.layers
@@ -167,9 +162,7 @@ class Computation:
                 + 2 * Cgm[self.number_of_layers - 1][2, 2]
             )
         ) * self.r_cl[self.number_of_layers]
-        """
-            You probably need to check self.number_of_layers - 1 
-        """
+
         # Second last boundary condition for a
 
         a[2 * self.number_of_layers, 0] = 0  # Boundary condition for a, bottom row
