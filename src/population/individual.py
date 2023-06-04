@@ -11,14 +11,14 @@ class Genome:
         materials: list[Material] = None,
         layers_by_materials: list = None,
         ref_angles: list[float] = None,
-        ref_thickness: list[float] = None,
+        angles_to_thickness: dict = None,
         reverse: bool = True,
         mixed: bool = False,  # TO DO if time is available
     ):
         self.materials = materials
         self.layers_by_materials = layers_by_materials
         self.ref_angles = ref_angles
-        self.ref_thickness = ref_thickness
+        self.angles_to_thickness = angles_to_thickness
         self.reverse = reverse
         self.mixed = mixed
         self.layers = []
@@ -35,7 +35,7 @@ class Genome:
         for _ in range(int(number_of_layers / diviseur)):
             # Choose a random angle and thickness from the reference lists
             random_angle = np.random.choice(self.ref_angles)
-            random_thickness = np.random.choice(self.ref_thickness)
+            random_thickness = self.angles_to_thickness[random_angle]
 
             # Create a layer object using the random angle, thickness, and material
             layer = Layer(random_thickness, random_angle, mat)
@@ -73,26 +73,33 @@ class Individual(Computation):
         genome: Genome,
         number_of_points_by_layer: int,
         failure_tol: float,
-        internal_radius=174,
-        length=1000,
+        internal_radius: float = 174,
+        length=1,
         id=-1,
     ):
         self.genome = genome  # list of float values
         self.id = id
-        self.internal_radius = internal_radius
+        self.internal_radius: float = internal_radius
         self.length = length
         self.number_of_points_by_layer = number_of_points_by_layer
         self.tank: Tank = Tank(genome.get_genome(), internal_radius, length)
         self.failure_tol = failure_tol
         self.origin_operation = "init"
+        self.angles_ratios = []
 
         super().__init__(self.tank, self.number_of_points_by_layer)
         self.fitness = 0.0  # fitness value of the individual
 
-    def calculate_fitness(self, coefs: tuple, marge: float):
+    def calculate_fitness(
+        self,
+        coefs: tuple,
+        marge: float,
+        angles_prop: tuple[float],
+        angles_ranges: tuple[float],
+    ):
         self.calculate_deformation_and_constraints()
         tsai_wu = self.tsai_wu_failure_criteria()
-
+        self.angles_ratios = self.angles_prop(angles_ranges)
         n1, n2, n3 = coefs
 
         def calculate_ponderation(f):
@@ -103,27 +110,47 @@ class Individual(Computation):
             else:
                 return n3
 
+        def make_triangle_function(x_target):
+            f = (
+                lambda x: -x / (1 - x_target) + 1 / (1 - x_target)
+                if x >= x_target
+                else x / x_target
+            )
+            return f
+
+        c1 = (np.vectorize(calculate_ponderation)(tsai_wu)).sum()
+
+        failure_ratio_f = make_triangle_function(self.failure_tol)
+        self.failed = tsai_wu[tsai_wu > 1].shape[0] / tsai_wu.shape[0]
+        self.nomber_ratio = failure_ratio_f(self.failed)
+
+        c2 = self.nomber_ratio
+
+        c3 = 1
+        for indx, prop in enumerate(angles_prop):
+            f = make_triangle_function(prop)
+            c3 *= f(self.angles_ratios[indx])
+        self.angles_prop_ratio = c3
+
+        # Criteria 4
         self.inverse_radius_ratio = (
             self.tank.internal_radius / self.tank.get_external_radius()
         )
+        c4 = self.inverse_radius_ratio
 
-        failure_ratio_f = (
-            lambda x: -x / (1 - self.failure_tol) + 1 / (1 - self.failure_tol)
-            if x >= 0.3
-            else x / self.failure_tol
-        )
+        self.fitness = (c4**8) * (c3**4) * (c2**3) * c1**1
 
-        self.failed = tsai_wu[tsai_wu > 1].shape[0] / tsai_wu.shape[0]
+    def angles_prop(self, angles_ranges):
+        props = []
+        layers_angles = [layer.angle for layer in self.tank.layers]
+        for i in range(1, len(angles_ranges)):
+            prop = 0
+            for angle in layers_angles:
+                if angles_ranges[i - 1] <= np.abs(angle) < angles_ranges[i]:
+                    prop += 1
+            props.append(prop / len(layers_angles))
 
-        self.nomber_ratio = failure_ratio_f(self.failed)
-
-        fintess = (
-            self.inverse_radius_ratio**8
-            * self.nomber_ratio**2
-            * (np.vectorize(calculate_ponderation)(tsai_wu)).sum()
-        )
-
-        self.fitness = fintess
+        return props
 
     def reproduce(self, second_parent):
         first_parent_layers: list[Layer] = self.tank.layers
@@ -145,17 +172,17 @@ class Individual(Computation):
             + second_parent_layers[second_parent_layers_mid:]
         )
 
-        fourth_child_layers: list[Layer] = np.random.choice(
-            all_parents_layers,
-            first_parent_layers_mid + second_parent_layers_mid,
-            replace=True,
-        ).tolist()
+        # fourth_child_layers: list[Layer] = np.random.choice(
+        #     all_parents_layers,
+        #     first_parent_layers_mid + second_parent_layers_mid,
+        #     replace=True,
+        # ).tolist()
 
         children_layers = [
             first_child_layers,
             second_child_layers,
             third_child_layers,
-            fourth_child_layers,
+            # fourth_child_layers,
         ]
 
         new_individuals: list[Individual] = []
@@ -164,11 +191,12 @@ class Individual(Computation):
             genome.set_layers(child_layer)
             tmp_indiv = Individual(
                 genome,
-                self.number_of_layers,
+                self.number_of_points_by_layer,
                 self.failure_tol,
                 self.internal_radius,
                 self.length,
             )
+
             new_individuals.append(tmp_indiv)
 
         return new_individuals
