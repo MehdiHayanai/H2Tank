@@ -1,6 +1,17 @@
 # Genetic Algorithm for Optimizing the Resistance of Hydrogen Tanks
 
-Description: This project contains a genetic algorithm implementation in Python for optimizing the resistance of hydrogen tanks used in cars that are pressurized with 700 bars and need to resist a burst test of 1750 bars. Hydrogen tanks are essential components in many applications that rely on hydrogen fuel cells, and their resistance is a critical factor in determining their safety and durability. The genetic algorithm works by iteratively generating and evaluating populations of candidate solutions (genetic individuals) and selecting the best individuals for reproduction through genetic operators like crossover and mutation. The fitness of each individual is determined by simulating the tank's resistance under various conditions using a physics-based model that calculates the stress in each layer of the tank. The genetic algorithm is implemented using an object-oriented approach, with classes for the individual, population, and genetic algorithm.
-By using this genetic algorithm, we aim to find optimal hydrogen tank designs that maximize resistance while minimizing weight and cost.
+## Description
 
-Keywords: genetic algorithm, optimization, hydrogen tanks, resistance, fitness function, physics-based modeling, object-oriented programming, Python, pressure, burst test, stress calculation.
+This project implements a genetic algorithm in Python aimed at optimizing the resistance of hydrogen tanks used in cars pressurized to 700 bars, ensuring their ability to withstand a burst test of 1750 bars. Hydrogen tanks are critical components in various applications relying on hydrogen fuel cells, where their resistance significantly influences safety and durability.
+
+The genetic algorithm operates by iteratively generating and evaluating populations of candidate solutions (genetic individuals). It then selects the best individuals for reproduction using genetic operators such as crossover and mutation. Each individual's fitness is determined through simulations of the tank's resistance under diverse conditions, employing a physics-based model that calculates stress in each layer of the tank.
+
+Implemented in an object-oriented manner, the genetic algorithm encompasses classes for individual entities, populations, and the genetic algorithm itself.
+
+## Objective
+
+The primary goal is to discover optimal hydrogen tank designs that maximize resistance while minimizing weight and cost.
+
+## Keywords
+
+Genetic algorithm, optimization, hydrogen tanks, resistance, fitness function, physics-based modeling, object-oriented programming, Python, pressure, burst test, stress calculation.
